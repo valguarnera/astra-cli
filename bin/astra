@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+if [ -L "/opt/astra" ]; then
+    export ASTRA_HOME="/opt/astra"
+else
+    export ASTRA_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
+
+source "$ASTRA_HOME/lib/core/project.sh"
+
+if is_development; then
+    export ASTRA_ENV=development
+else
+    export ASTRA_ENV=production
+fi
+
+exec "$ASTRA_HOME/lib/core/router.sh" "$@"
