@@ -1,8 +1,10 @@
 {
   "name": "astra-cli",
+
   "build": {
     "dockerfile": "Dockerfile"
   },
+
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
   "workspaceFolder": "/workspace",
   "remoteUser": "node",
@@ -12,6 +14,11 @@
       "dockerDashComposeVersion": "v2"
     }
   },
+  "mounts": [
+    "source=/tmp,target=/tmp,type=bind",
+    "source=${localEnv:HOME}/.cache,target=/home/node/.cache,type=bind",
+    "source=${localEnv:HOME}/.local,target=/home/node/.local,type=bind"
+  ],
   "customizations": {
     "vscode": {
       "extensions": []

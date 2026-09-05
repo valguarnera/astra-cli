@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [ -z "$ASTRA_HOME" ]; then
+    ASTRA_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+
 source "$ASTRA_HOME/lib/core/ui.sh"
 source "$ASTRA_HOME/lib/core/project.sh"
 

@@ -62,7 +62,7 @@ Con ella será posible:
 
 ## ¿Cómo usar ASTRA CLI?
 
-El comando `astra --help` nos orienta bien en uso y devuelve una estructura bellamente simple de interpretar.
+El comando `astra --help` muestra los casos de uso. Devuelve una estructura bella y simple de interpretar.
 
 ```bash
 ASTRA CLI
@@ -76,6 +76,7 @@ Uso:
     astra broker state
 
     astra node create
+    astra node list
     astra node delete
 
     astra flash usb <node>

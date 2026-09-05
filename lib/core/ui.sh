@@ -10,6 +10,11 @@ fail() {
     sleep 0.18
 }
 
+error() {
+    printf "✗ %s\n" "$1"
+    sleep 0.18
+}
+
 info() {
     printf "• %s\n" "$1"
     sleep 0.18

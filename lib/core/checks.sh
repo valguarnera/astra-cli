@@ -58,13 +58,29 @@ Then log out and log back in."
 
 check_yq() {
     if command -v yq >/dev/null 2>&1; then
-        ok "yq"
-    else
-        die "yq is not installed.
-
-Try:
-sudo apt-get install yq
-or
-sudo snap install yq"
+        local yq_version
+        yq_version=$(yq --version 2>&1 || true)
+        if [[ "$yq_version" == *"mikefarah"* ]] || [[ "$yq_version" == *"https://github.com/mikefarah/yq"* ]]; then
+            ok "yq (mikefarah/yq)"
+            return 0
+        fi
+        warn "yq encontrado pero no es la implementación requerida (mikefarah/yq)"
+        warn "Versión detectada: $yq_version"
     fi
+    die "yq (mikefarah/yq) no está instalado o es incompatible.
+
+Se requiere: yq de https://github.com/mikefarah/yq (versión 4.x)
+
+Instalación:
+  # Linux (snap)
+  sudo snap install yq
+
+  # Linux (binary)
+  sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+  sudo chmod +x /usr/local/bin/yq
+
+  # macOS (brew)
+  brew install yq
+
+Verificar: yq --version | grep mikefarah"
 }

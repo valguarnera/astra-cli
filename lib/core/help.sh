@@ -13,6 +13,7 @@ Uso:
     astra broker state
 
     astra node create
+    astra node list
     astra node delete
 
     astra flash usb <node>

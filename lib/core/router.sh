@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 source "$ASTRA_HOME/lib/core/help.sh"
 
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    return 0
+fi
+
 COMMAND="$1"
 ACTION="$2"
 
