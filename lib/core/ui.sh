@@ -20,6 +20,11 @@ info() {
     sleep 0.18
 }
 
+warn() {
+    printf "⚠ %s\n" "$1"
+    sleep 0.18
+}
+
 success() {
     printf "✔ %s\n" "$1"
     exit 0

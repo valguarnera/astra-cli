@@ -1,0 +1,4 @@
+- platform: dallas_temp
+  name: "{{NODE_FRIENDLY_NAME}} Temperatura DS18B20"
+  resolution: 12
+  update_interval: 30s

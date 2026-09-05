@@ -56,6 +56,16 @@ EOF
 create_directories() {
     create_directory "$WORKSPACE/nodes"
     create_directory "$WORKSPACE/docker"
+    create_directory "$WORKSPACE/docker/mosquitto"
+    create_directory "$WORKSPACE/docker/mosquitto/config"
+    create_directory "$WORKSPACE/docker/mosquitto/data"
+    create_directory "$WORKSPACE/docker/mosquitto/log"
+    write_file "$WORKSPACE/docker/mosquitto/config/mosquitto.conf" <<'EOF'
+listener 1883
+listener 9001
+protocol websockets
+allow_anonymous true
+EOF
     ok "Directories"
 }
 

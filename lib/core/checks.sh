@@ -1,59 +1,54 @@
 #!/usr/bin/env bash
-source "$SCRIPT_DIR/lib/core/ui.sh"
 
-#check_os ✓
-#check_docker ✓
-#check_docker_compose ✓
-#check_docker_daemon ✓
-#check_docker_permissions ✓
-#check_usb
-#check_project
-#check_node
+if [ -z "$ASTRA_HOME" ]; then
+    ASTRA_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+
+source "$ASTRA_HOME/lib/core/ui.sh"
+
+# ===========================================
+# CHECK FUNCTIONS (return 0 if OK, 1 if missing)
+# ===========================================
 
 check_os() {
     if [[ "$OSTYPE" == linux* ]]; then
         ok "Linux"
+        return 0
     else
-        die "Linux is required."
+        return 1
     fi
 }
 
 check_docker() {
     if command -v docker >/dev/null 2>&1; then
         ok "Docker"
-    else
-        die "Docker is not installed."
+        return 0
     fi
+    return 1
 }
 
 check_compose() {
     if command -v docker-compose >/dev/null 2>&1 || docker compose version >/dev/null 2>&1; then
         ok "Docker Compose"
-    else
-        die "Docker Compose is not installed."
+        return 0
     fi
+    return 1
 }
 
 check_daemon() {
     if docker info >/dev/null 2>&1; then
         ok "Docker Daemon"
-    else
-        die "Docker daemon is not running."
+        return 0
     fi
+    return 1
 }
 
 check_docker_permissions() {
     if docker ps >/dev/null 2>&1; then
         ok "Docker Permissions"
-    else
-        die "Current user cannot access Docker.
-
-Try:
-
-sudo usermod -aG docker $USER
-
-Then log out and log back in."
+        return 0
     fi
+    return 1
 }
 
 check_yq() {
@@ -67,20 +62,143 @@ check_yq() {
         warn "yq encontrado pero no es la implementación requerida (mikefarah/yq)"
         warn "Versión detectada: $yq_version"
     fi
-    die "yq (mikefarah/yq) no está instalado o es incompatible.
+    return 1
+}
 
-Se requiere: yq de https://github.com/mikefarah/yq (versión 4.x)
+check_esphome() {
+    if docker image inspect esphome/esphome >/dev/null 2>&1; then
+        ok "ESPHome image"
+        return 0
+    fi
+    return 1
+}
 
-Instalación:
-  # Linux (snap)
-  sudo snap install yq
+# ===========================================
+# INSTALL FUNCTIONS (for missing dependencies)
+# ===========================================
 
-  # Linux (binary)
-  sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-  sudo chmod +x /usr/local/bin/yq
+install_docker() {
+    info "Instalando Docker..."
+    
+    # Detect distro
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case "$ID" in
+            ubuntu|debian)
+                sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+                ;;
+            fedora|rhel|centos)
+                sudo dnf install -y docker docker-compose
+                ;;
+            arch|manjaro)
+                sudo pacman -S --noconfirm docker docker-compose
+                ;;
+            *)
+                warn "Distro no reconocida ($ID). Intentando instalación genérica..."
+                curl -fsSL https://get.docker.com | sudo sh
+                ;;
+        esac
+    else
+        curl -fsSL https://get.docker.com | sudo sh
+    fi
+    
+    # Enable and start service
+    sudo systemctl enable docker 2>/dev/null || true
+    sudo systemctl start docker 2>/dev/null || true
+    
+    # Add user to docker group
+    sudo usermod -aG docker "$USER" 2>/dev/null || true
+    
+    verify_docker
+}
 
-  # macOS (brew)
-  brew install yq
+verify_docker() {
+    if check_docker; then
+        info "Docker instalado y verificado"
+        return 0
+    fi
+    return 1
+}
 
-Verificar: yq --version | grep mikefarah"
+install_yq() {
+    info "Instalando yq (mikefarah/yq)..."
+    
+    # Prefer binary install (works everywhere)
+    local arch
+    arch=$(uname -m)
+    case "$arch" in
+        x86_64) yq_arch="linux_amd64" ;;
+        aarch64) yq_arch="linux_arm64" ;;
+        armv7l) yq_arch="linux_arm" ;;
+        *) die "Arquitectura no soportada para yq: $arch" ;;
+    esac
+    
+    sudo wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/latest/download/yq_${yq_arch}"
+    sudo chmod +x /usr/local/bin/yq
+    
+    verify_yq
+}
+
+verify_yq() {
+    if check_yq; then
+        info "yq instalado y verificado"
+        return 0
+    fi
+    return 1
+}
+
+install_esphome() {
+    info "Descargando imagen ESPHome..."
+    
+    if docker pull esphome/esphome; then
+        info "Imagen ESPHome descargada"
+        return 0
+    fi
+    return 1
+}
+
+verify_esphome() {
+    if check_esphome; then
+        info "ESPHome image verificada"
+        return 0
+    fi
+    return 1
+}
+
+# ===========================================
+# HIGH-LEVEL CHECK + INSTALL ORCHESTRATOR
+# ===========================================
+
+# Usage: ensure_dependency <check_func> <install_func> <name>
+ensure_dependency() {
+    local check_func="$1"
+    local install_func="$2"
+    local name="$3"
+    
+    if $check_func; then
+        return 0
+    fi
+    
+    warn "$name no encontrado. Instalando..."
+    if $install_func; then
+        ok "$name instalado correctamente"
+        return 0
+    else
+        die "No se pudo instalar $name. Instálelo manualmente e intente de nuevo."
+    fi
+}
+
+# Run all checks (for install.sh --check-only mode)
+run_all_checks() {
+    local all_ok=1
+    
+    check_os || { error "Linux requerido"; all_ok=0; }
+    check_docker || { error "Docker no instalado"; all_ok=0; }
+    check_compose || { error "Docker Compose no instalado"; all_ok=0; }
+    check_daemon || { error "Docker daemon no corriendo"; all_ok=0; }
+    check_docker_permissions || { error "Sin permisos Docker"; all_ok=0; }
+    check_yq || { error "yq no instalado"; all_ok=0; }
+    check_esphome || { error "ESPHome image no disponible"; all_ok=0; }
+    
+    return $all_ok
 }

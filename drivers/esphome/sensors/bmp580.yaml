@@ -1,0 +1,10 @@
+- platform: bmp581_i2c
+  address: 0x47
+  temperature:
+    name: "{{NODE_FRIENDLY_NAME}} Temperatura BMP580"
+    oversampling: 16x
+  pressure:
+    name: "{{NODE_FRIENDLY_NAME}} Presión"
+    oversampling: 16x
+  iir_filter: 4x
+  update_interval: 30s

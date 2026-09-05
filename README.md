@@ -2,7 +2,7 @@
 
 ASTRA CLI es el punto de entrada al ecosistema ASTRA.
 
-Desde una única herramienta es posible instalar, crear, administrar y desplegar proyectos y nodos, manteniendo una separación clara entre la herramienta (CLI), el proyecto (Workspace) y la infraestructura (Nodos). 
+Desde una única herramienta es posible instalar, crear, administrar y desplegar proyectos y nodos, manteniendo una separación clara entre la herramienta (CLI), el proyecto (Workspace) y la infraestructura (Nodos).
 
 ```
       ★ ASTRA CLI
@@ -29,10 +29,23 @@ Ejecutamos el instalador
 ```bash
 sudo ./install.sh
 ```
+
+O en modo desarrollo (symlink al repo actual):
+
+```bash
+sudo ./install.sh --dev
+```
+
 Verificamos la instalación
 
 ```bash
 astra --version
+```
+
+Verificamos solo dependencias (sin instalar ASTRA):
+
+```bash
+./install.sh --check-only
 ```
 
 ## Desinstalar correctamente
@@ -40,29 +53,38 @@ astra --version
 ```bash
 sudo ./uninstall.sh
 ```
+
 ---
 
-## ¿Qué es ASTRA CLI?
+## Estado del proyecto
 
-ASTRA CLI no es un proyecto ASTRA.
+**ASTRA CLI 0.1.0**
 
-Es la herramienta encargada de orquestar todo el ecosistema.
+| Componente | Estado | Detalle |
+|------------|--------|---------|
+| `astra init` | ✅ | Crea workspace completo con configuración, secrets, docker-compose, mosquitto.conf |
+| Workspace discovery | ✅ | DEV: implícito por directorio actual; PROD: explícito por nombre/ruta (planeado) |
+| Secrets (`!secret`) | ✅ | Resolución automática desde `secrets.yaml` |
+| Docker Compose | ✅ | Generado y gestionado por workspace |
+| Mosquitto config | ✅ | Incluido en `docker/mosquitto/config/mosquitto.conf` |
+| `astra broker up` | ✅ | Levanta broker MQTT en Docker |
+| `astra broker state` | ✅ | Muestra estado del contenedor |
+| `astra broker down` | ✅ | Detiene y limpia broker |
+| `astra node list` | ✅ | Stub funcional |
+| `astra node create` | ✅ | Crea nodo con driver ESPHome, genera firmware.yaml, valida con `esphome config` |
+| `astra node delete` | ✅ | Stub funcional |
+| Help / Version | ✅ | `astra --help`, `astra --version` |
+| Tests | 33/33 ✅ | Workspace, router, secrets, install, node create, driver |
 
-Con ella será posible:
-
-- Crear Workspaces.
-- Crear nodos.
-- Compilar firmware.
-- Flashear dispositivos por USB u OTA.
-- Administrar el broker MQTT.
-- Consultar logs.
-- Gestionar proyectos ASTRA.
+**En desarrollo (próximos vertical slices):**
+- `astra flash usb` / `astra logs usb` (requieren hardware real)
+- OTA flash, múltiples drivers, ADP, Discovery, SDK
 
 ---
 
 ## ¿Cómo usar ASTRA CLI?
 
-El comando `astra --help` muestra los casos de uso. Devuelve una estructura bella y simple de interpretar.
+El comando `astra --help` muestra los casos de uso. Devuelve una estructura clara:
 
 ```bash
 ASTRA CLI
@@ -90,79 +112,172 @@ Opciones
     -h, --help
     -v, --version
 ```
----
-
-## Estado del proyecto
-
-Actualmente ASTRA CLI se encuentra en desarrollo activo.
-
-### Implementado
-
-- Instalador
-- CLI global.
-- Gestión del broker.
-- Integración con ESPHome.
-- Verificaciones del sistema.
-- Descarga automática de imágenes Docker.
-- Workspace (`astra init`)
-
-### Próximamente
-
-- Gestión de nodos.
-- ASTRA Discovery.
-- Node Announcement.
-- Request IDs (ADP).
-- SDK.
-
----
-## ¿Qué es ASTRA?
-
-> ASTRA es un ecosistema para la automatización y el desarrollo de sistemas distribuidos. Está compuesto por una herramienta de línea de comandos (ASTRA CLI), un formato de Workspace para organizar proyectos, un conjunto de drivers para distintos tipos de nodos y un protocolo de comunicación propio llamado **ADP (ASTRA Device Protocol)**.
->
-> El objetivo de ASTRA es desacoplar el hardware de la lógica de automatización, permitiendo que distintos dispositivos compartan una misma arquitectura y puedan integrarse al sistema mediante drivers específicos.
 
 ---
 
-## Filosofía
+## Flujo de trabajo típico (Vertical Slice actual)
 
-ASTRA está dividido en tres componentes claramente separados.
+```bash
+# 1. Crear workspace
+astra init mi-estacion
+#   → Prompts: WiFi SSID, Password, MQTT Host
+#   → Crea: astra.yaml, secrets.yaml, .gitignore, nodes/, docker/, docker-compose.yml
 
-* ### ASTRA CLI
+# 2. Crear nodo con driver ESPHome
+astra node create sensor01 --board esp32dev --sensors bmp580,ds18b20
+#   → Valida dependencias (Docker, yq, ESPHome image)
+#   → Crea: nodes/sensor01/node.yaml + firmware.yaml
+#   → Valida firmware con `esphome config` (dry-run)
 
-  La herramienta que utiliza el usuario.
+# 3. Levantar broker MQTT
+astra broker up
 
-* ### Workspace
+# 4. (Próximo) Flashear por USB
+# astra flash usb sensor01
 
-  El proyecto sobre el que trabaja ASTRA.
-
-* ### Nodos
-
-  Los dispositivos físicos que ejecutan el firmware.
-
-Esta separación permite que la herramienta evolucione independientemente de los proyectos y del hardware.
+# 5. (Próximo) Ver logs
+# astra logs usb sensor01
+```
 
 ---
 
-## Ecositema
+## Estructura del Workspace
+
+```
+~/apps/mi-estacion/              ← workspace root
+├── astra.yaml                   ← configuración del proyecto (name, mqtt, wifi con !secret)
+├── secrets.yaml                 ← valores reales (gitignored)
+├── .gitignore                   ← ignora secrets.yaml, firmware.yaml, build/, .temp/
+├── nodes/                       ← directorio de nodos
+│   └── sensor01/                ← un directorio por nodo
+│       ├── node.yaml            ← declaración del nodo (source of truth)
+│       └── firmware.yaml        ← generado por driver (build artifact, gitignored)
+└── docker/                      ← infraestructura local del proyecto
+    ├── docker-compose.yml       ← mosquitto
+    └── mosquitto/
+        ├── config/
+        │   └── mosquitto.conf   ← configuración Mosquitto
+        ├── data/
+        └── log/
+```
+
+### Qué representa cada parte
+
+| Archivo/Directorio | Propósito |
+|--------------------|-----------|
+| `astra.yaml` | Configuración del proyecto: nombre, MQTT host, WiFi (referencian secrets) |
+| `secrets.yaml` | Valores reales de secrets (WiFi SSID/password, MQTT host) — **no commitear** |
+| `nodes/<id>/node.yaml` | Declaración del nodo: id, friendly_name, driver, board, sensors[] |
+| `nodes/<id>/firmware.yaml` | Generado por el driver; YAML completo de ESPHome listo para compilar/flashear |
+| `docker/docker-compose.yml` | Define servicios locales (broker MQTT) |
+| `docker/mosquitto/config/mosquitto.conf` | Configuración del broker (puertos 1883/9001, websockets, anonymous) |
+
+---
+
+## Workspace: DEV vs PROD
+
+### DEV (modo desarrollo)
+- Workspace **implícito** mediante el directorio actual
+- Se detecta automáticamente buscando `astra.yaml` hacia arriba desde `$PWD`
+- Útil durante desarrollo de ASTRA CLI mismo (`install.sh --dev`)
+
+```bash
+~/apps/nodo02
+    └── astra broker up          # funciona: encuentra workspace en ~/apps/nodo02
+
+~/apps
+    └── astra broker up          # falla: no hay workspace en ~/apps
+```
+
+### PROD (modo producción)
+- Workspace **explícito** mediante nombre/ruta registrada
+- Arquitectura prevista: registro de workspaces en `~/.config/astra/workspaces.yaml`
+- Por ahora: mismo comportamiento DEV (workspace por directorio actual)
+
+---
+
+## Driver ESPHome
+
+El primer driver implementado, ubicado en `$ASTRA_HOME/drivers/esphome/`:
+
+```
+drivers/esphome/
+├── template.yaml          # Template base ESPHome (placeholders: {{NODE_ID}}, {{BOARD}}, etc.)
+├── sensors/
+│   ├── bmp580.yaml        # Fragmento I2C: bmp581_i2c (addr 0x47, pines 21/22)
+│   └── ds18b20.yaml       # Fragmento 1-Wire: dallas_temp (GPIO 4, auto-descubre address)
+└── driver.sh              # Subcomandos: render, list-sensors, validate
+```
+
+### Subcomandos del driver
+
+```bash
+# Lista sensores soportados
+$ASTRA_HOME/drivers/esphome/driver.sh list-sensors [--raw]
+
+# Genera firmware.yaml desde node.yaml + astra.yaml + secrets.yaml
+$ASTRA_HOME/drivers/esphome/driver.sh render <node_id>
+
+# Valida configuración con esphome config (dry-run)
+$ASTRA_HOME/drivers/esphome/driver.sh validate <node_id>
+```
+
+### Sensores soportados
+
+| Sensor | Plataforma ESPHome | Configuración por defecto |
+|--------|-------------------|---------------------------|
+| `bmp580` | `bmp581_i2c` | I2C addr 0x47, SDA 21, SCL 22, oversampling 16x, IIR 4x |
+| `ds18b20` | `dallas_temp` | 1-Wire GPIO 4, resolution 12, auto-descubre address |
+
+---
+
+## Sistema de dependencias (install.sh)
+
+El instalador verifica e instala automáticamente las dependencias requeridas:
 
 ```text
-ASTRA
+Docker
+    ├── instalado → ✅ next
+    └── no instalado → install_docker() → verify_docker() → next
 
-├── CLI
-│   Herramienta de desarrollo.
-│
-├── Workspace
-│   Organización de un proyecto.
-│
-├── Nodes
-│   Dispositivos físicos.
-│
-├── Drivers
-│   Adaptadores entre cada tecnología y ASTRA.
-│
-└── ADP
-    Protocolo de comunicación.
+yq (mikefarah/yq v4.x)
+    ├── instalado → ✅ next
+    └── no instalado → install_yq() (binary) → verify_yq() → next
+
+ESPHome image
+    ├── disponible → ✅ next
+    └── no disponible → docker pull esphome/esphome → verify_esphome() → next
 ```
+
+**No reinstala dependencias existentes.** Si ya están presentes, solo verifica.
+
+Modos:
+```bash
+sudo ./install.sh           # Producción: copia archivos a /opt/astra
+sudo ./install.sh --dev     # Desarrollo: symlink /opt/astra → repo actual
+sudo ./install.sh --check-only  # Solo verifica dependencias
+```
+
+---
+
+## Tests
+
+Ejecutar suite de tests:
+
+```bash
+cd tests
+./run_tests.sh
+```
+
+**Baseline actual: 33 tests pasan, 2 skipped (requieren sudo)**
+
+Categorías:
+- Workspace: find, load, secrets resolution, paths
+- Router: dispatch, help, version, invalid commands
+- Secrets: existing, missing file, missing key, no-tag
+- Install: ASTRA_HOME resolution, launcher creation, dev/prod mode
+- Node create: no workspace, missing args, invalid sensor, duplicate, driver render
+- Driver: list-sensors, render, dependency checks
 
 ---
 
