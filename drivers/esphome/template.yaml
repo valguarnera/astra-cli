@@ -24,8 +24,17 @@ logger:
   level: DEBUG
   baud_rate: 115200
 
+i2c:
+  sda: 21
+  scl: 22
+  scan: true
+  id: bus_a
+
+one_wire:
+  - platform: gpio
+    pin: 4
+
 api:
-  encryption: ""
   port: 6053
 
 ota:

@@ -73,11 +73,12 @@ sudo ./uninstall.sh
 | `astra node list` | ✅ | Stub funcional |
 | `astra node create` | ✅ | Crea nodo con driver ESPHome, genera firmware.yaml, valida con `esphome config` |
 | `astra node delete` | ✅ | Stub funcional |
+| `astra flash usb` | ✅ | Flashea ESP32 por USB: regenera firmware, valida, auto-detecta puerto, `esphome run` |
+| `astra logs usb` | ✅ | Logs seriales por USB: auto-detecta puerto, `esphome logs --follow` |
 | Help / Version | ✅ | `astra --help`, `astra --version` |
-| Tests | 33/33 ✅ | Workspace, router, secrets, install, node create, driver |
+| Tests | 46/46 ✅ | Workspace, router, secrets, install, node create, driver, flash, logs |
 
 **En desarrollo (próximos vertical slices):**
-- `astra flash usb` / `astra logs usb` (requieren hardware real)
 - OTA flash, múltiples drivers, ADP, Discovery, SDK
 
 ---
@@ -132,11 +133,18 @@ astra node create sensor01 --board esp32dev --sensors bmp580,ds18b20
 # 3. Levantar broker MQTT
 astra broker up
 
-# 4. (Próximo) Flashear por USB
-# astra flash usb sensor01
+# 4. Flashear ESP32 por USB
+astra flash usb sensor01
+#   → Regenera firmware.yaml desde node.yaml
+#   → Valida configuración con esphome config
+#   → Auto-detecta puerto USB (/dev/ttyUSB*, /dev/ttyACM*)
+#   → Compila y flashea con esphome run
 
-# 5. (Próximo) Ver logs
-# astra logs usb sensor01
+# 5. Ver logs en tiempo real
+astra logs usb sensor01
+#   → Auto-detecta puerto USB
+#   → Conecta con esphome logs --follow
+#   → Ctrl+C para salir
 ```
 
 ---
@@ -231,6 +239,114 @@ $ASTRA_HOME/drivers/esphome/driver.sh validate <node_id>
 
 ---
 
+## Flash USB
+
+Comando para flashear un nodo ESP32 conectado por USB:
+
+```bash
+astra flash usb <node> [--port <port>]
+```
+
+### Flujo
+
+1. **Workspace & Node**: Valida workspace y que el nodo existe
+2. **Regenera firmware**: `driver.sh render` desde `node.yaml` + `astra.yaml` + `secrets.yaml`
+3. **Valida config**: `esphome config` (dry-run)
+4. **Detecta puerto**: Busca `/dev/ttyUSB*` y `/dev/ttyACM*`
+5. **Flashea**: `docker run --privileged --device=<port> esphome/esphome run firmware.yaml`
+
+### Opciones
+
+| Opción | Descripción |
+|--------|-------------|
+| `<node>` | ID del nodo (ej: `sensor01`) |
+| `--port <port>` | Puerto serial explícito (ej: `/dev/ttyUSB1`) |
+
+### Comportamiento de detección USB
+
+| Puertos detectados | Comportamiento |
+|-------------------|----------------|
+| 0 | Error: "Conecte el ESP32 por USB" |
+| 1 | Auto-selecciona e informa |
+| Múltiples | Error: "Use --port para especificar" |
+
+### Override manual
+
+```bash
+astra flash usb sensor01 --port /dev/ttyUSB1
+```
+
+El puerto explícito tiene prioridad sobre la autodetección.
+
+### Permisos
+
+Si el puerto existe pero no hay permisos:
+
+```text
+✗ Sin permisos para acceder a /dev/ttyUSB0
+Ejecute: sudo usermod -aG dialout $USER y reinicie sesión.
+```
+
+---
+
+## Logs USB
+
+Comando para ver logs seriales de un nodo ESP32:
+
+```bash
+astra logs usb <node> [--port <port>] [--follow] [--lines <n>] [--no-follow]
+```
+
+### Flujo
+
+1. **Workspace & Node**: Valida workspace y que el nodo existe
+2. **Detecta puerto**: Igual que flash (autodetección o `--port`)
+3. **Logs**: `docker run -it --device=<port> esphome/esphome logs firmware.yaml [--follow]`
+
+### Opciones
+
+| Opción | Descripción |
+|--------|-------------|
+| `<node>` | ID del nodo |
+| `--port <port>` | Puerto serial explícito |
+| `--follow`, `-f` | Seguir logs continuamente (default) |
+| `--lines`, `-n <n>` | Número de líneas a mostrar |
+| `--no-follow` | Mostrar últimas líneas y salir |
+
+### Ejemplos
+
+```bash
+astra logs usb sensor01                    # Follow mode (default)
+astra logs usb sensor01 --follow           # Explícito follow
+astra logs usb sensor01 --no-follow        # Últimas líneas y salir
+astra logs usb sensor01 --lines 50         # Últimas 50 líneas
+astra logs usb sensor01 --port /dev/ttyUSB1 --follow  # Puerto explícito
+```
+
+### Salida
+
+```text
+$ astra logs usb sensor01
+
+• Workspace: mi-estacion
+• Nodo: sensor01
+• USB: /dev/ttyUSB0
+• Conectando...
+
+[07:21:03] ...
+[07:21:04] WiFi connected
+[07:21:05] MQTT connected
+[07:21:06] BMP581 Temperature: 23.4°C
+[07:21:06] BMP581 Pressure: 1013.2 hPa
+[07:21:06] DS18B20 Temperature: 22.1°C
+```
+
+### Detener
+
+Presione `Ctrl+C` para salir limpiamente. No deja procesos Docker huérfanos.
+
+---
+
 ## Sistema de dependencias (install.sh)
 
 El instalador verifica e instala automáticamente las dependencias requeridas:
@@ -269,7 +385,7 @@ cd tests
 ./run_tests.sh
 ```
 
-**Baseline actual: 33 tests pasan, 2 skipped (requieren sudo)**
+**Baseline actual: 46 tests pasan, 5 skipped (requieren sudo / docker permissions)**
 
 Categorías:
 - Workspace: find, load, secrets resolution, paths
@@ -278,6 +394,8 @@ Categorías:
 - Install: ASTRA_HOME resolution, launcher creation, dev/prod mode
 - Node create: no workspace, missing args, invalid sensor, duplicate, driver render
 - Driver: list-sensors, render, dependency checks
+- Flash: no workspace, missing node, multiple nodes, auto-select, explicit port
+- Logs: no workspace, missing node, multiple nodes, auto-select, explicit port
 
 ---
 

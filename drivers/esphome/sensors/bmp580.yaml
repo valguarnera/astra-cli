@@ -6,5 +6,4 @@
   pressure:
     name: "{{NODE_FRIENDLY_NAME}} Presión"
     oversampling: 16x
-  iir_filter: 4x
   update_interval: 30s
