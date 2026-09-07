@@ -121,7 +121,7 @@ Opciones
 ```bash
 # 1. Crear workspace
 astra init mi-estacion
-#   → Prompts: WiFi SSID, Password, MQTT Host
+#   → Prompts: WiFi SSID, Password, MQTT Host (auto-detecta IP LAN 192.168.*)
 #   → Crea: astra.yaml, secrets.yaml, .gitignore, nodes/, docker/, docker-compose.yml
 
 # 2. Crear nodo con driver ESPHome
@@ -201,6 +201,50 @@ astra logs usb sensor01
 - Workspace **explícito** mediante nombre/ruta registrada
 - Arquitectura prevista: registro de workspaces en `~/.config/astra/workspaces.yaml`
 - Por ahora: mismo comportamiento DEV (workspace por directorio actual)
+
+### PROD (modo producción)
+- Workspace **explícito** mediante nombre/ruta registrada
+- Arquitectura prevista: registro de workspaces en `~/.config/astra/workspaces.yaml`
+- Por ahora: mismo comportamiento DEV (workspace por directorio actual)
+
+---
+
+## Detección automática de IP LAN para MQTT
+
+Al ejecutar `astra init`, ASTRA intenta detectar automáticamente una dirección IPv4 LAN (`192.168.*`) en la máquina anfitriona para usarla como valor por defecto del host MQTT (`mqtt_host` en `secrets.yaml`). Esto es necesario porque los dispositivos ESP físicos deben poder alcanzar el broker MQTT que corre en la máquina anfitriona.
+
+### Comportamiento de la detección
+
+1. **Primera prioridad**: Primera IP `192.168.*` encontrada en `hostname -I`
+2. **Ignorados**: Loopback (`127.*`), IPv6 (`::1`, `fe80::*`), redes Docker (`172.16-31.*`)
+3. **Fallback**: Si no hay IP `192.168.*`, usa `localhost` y muestra advertencia
+
+### Ejemplos
+
+**Con IP LAN detectada:**
+```bash
+astra init mi-estacion
+#   Broker.............. [192.168.1.108]:
+```
+
+**Sin IP LAN (fallback a localhost):**
+```bash
+astra init mi-estacion
+#   ⚠ No se detectó IP LAN 192.168.*. Usando 'localhost' como fallback.
+#   ⚠ Para hardware físico, configure mqtt_host con IP LAN accesible desde el ESP.
+#   Broker.............. [localhost]:
+```
+
+**Override manual:**
+```bash
+astra init mi-estacion
+#   Broker.............. [192.168.1.108]: 10.0.0.50
+#   # El usuario puede escribir cualquier IP/hostname válido
+```
+
+### Importante para hardware físico
+
+Cuando se usa hardware ESP32 real, el broker MQTT debe ser accesible desde la red del dispositivo. `localhost` (127.0.0.1) apunta al propio ESP, no a la máquina anfitriona. Asegúrese de que `secrets.yaml` contenga la IP LAN real de la máquina donde corre el broker MQTT.
 
 ---
 

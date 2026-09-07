@@ -188,6 +188,68 @@ ensure_dependency() {
     fi
 }
 
+# ===========================================
+# NETWORK FUNCTIONS
+# ===========================================
+
+# detect_lan_ip - Detecta la primera IP LAN 192.168.* disponible
+# Returns: IP address on stdout, returns 1 if not found
+detect_lan_ip() {
+    local ips
+    # Use hostname -I to get all IPs, then find first 192.168.*
+    ips=$(hostname -I 2>/dev/null || true)
+    
+    for ip in $ips; do
+        # Skip loopback
+        if [[ "$ip" =~ ^127\. ]]; then
+            continue
+        fi
+        # Skip IPv6
+        if [[ "$ip" == *:* ]]; then
+            continue
+        fi
+        # Prefer 192.168.*
+        if [[ "$ip" =~ ^192\.168\. ]]; then
+            printf "%s" "$ip"
+            return 0
+        fi
+    done
+    
+    # No 192.168.* found, return first non-loopback, non-Docker, non-IPv6 IP
+    for ip in $ips; do
+        if [[ "$ip" =~ ^127\. ]]; then
+            continue
+        fi
+        if [[ "$ip" == *:* ]]; then
+            continue
+        fi
+        # Skip Docker networks (172.16-31.*)
+        if [[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\. ]]; then
+            continue
+        fi
+        printf "%s" "$ip"
+        return 0
+    done
+    
+    return 1
+}
+
+# get_default_mqtt_host - Obtiene el host MQTT por defecto
+# Prioriza 192.168.*, luego fallback a localhost con warning
+get_default_mqtt_host() {
+    local lan_ip
+    lan_ip=$(detect_lan_ip)
+    if [ -n "$lan_ip" ]; then
+        printf "%s" "$lan_ip"
+        return 0
+    fi
+    # Fallback a localhost con warning (a stderr)
+    warn "No se detectó IP LAN 192.168.*. Usando 'localhost' como fallback." >&2
+    warn "Para hardware físico, configure mqtt_host con IP LAN accesible desde el ESP." >&2
+    printf "localhost"
+    return 1
+}
+
 # Run all checks (for install.sh --check-only mode)
 run_all_checks() {
     local all_ok=1

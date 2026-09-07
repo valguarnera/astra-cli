@@ -2,6 +2,7 @@
 
 source "$ASTRA_HOME/lib/core/ui.sh"
 source "$ASTRA_HOME/lib/workspace.sh"
+source "$ASTRA_HOME/lib/core/checks.sh"
 
 if [ -n "$1" ]; then
     WORKSPACE="$PWD/$1"
@@ -21,7 +22,10 @@ info "Initializing ASTRA Workspace...
 Project............. ${PROJECT_NAME}"
 WIFI_SSID=$(prompt "WiFi SSID..........." "")
 WIFI_PASSWORD=$(prompt_secret "WiFi Password....... ")
-MQTT_HOST=$(prompt "Broker.............." "localhost")
+
+# Detectar IP LAN por defecto para MQTT
+DEFAULT_MQTT_HOST=$(get_default_mqtt_host)
+MQTT_HOST=$(prompt "Broker.............." "$DEFAULT_MQTT_HOST")
 echo ""
 
 create_workspace
