@@ -149,6 +149,17 @@ load_workspace() {
         die "Error resolviendo configuración: variables vacías tras resolver secrets"
     fi
 
+    # Validar que MQTT_HOST no sea localhost/127.0.0.1 (inválido para ESP en red)
+    case "$MQTT_HOST" in
+        localhost|127.0.0.1|::1)
+            die "MQTT_HOST='$MQTT_HOST' no es válido para un nodo ESP físico.
+El broker MQTT debe ser accesible desde la red del ESP.
+En secrets.yaml, configure mqtt_host con la IP/hostname del broker accesible desde el ESP.
+Ejemplo:
+  mqtt_host: 192.168.1.100"
+            ;;
+    esac
+
     export ASTRA_NAME
     export WIFI_SSID
     export WIFI_PASSWORD

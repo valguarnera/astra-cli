@@ -110,7 +110,15 @@ info "Regenerando firmware..."
 
 # Validar configuración con esphome config
 info "Validando configuración ESPHome..."
-"$ASTRA_HOME/drivers/esphome/driver.sh" validate "$NODE_ID"
+VALIDATE_OUTPUT=$("$ASTRA_HOME/drivers/esphome/driver.sh" validate "$NODE_ID" 2>&1)
+VALIDATE_EXIT=$?
+if [ $VALIDATE_EXIT -ne 0 ]; then
+    fail "La configuración ESPHome del nodo '$NODE_ID' no es válida."
+    info "Revise board, sensores y configuración del firmware."
+    echo "$VALIDATE_OUTPUT"
+    exit $VALIDATE_EXIT
+fi
+echo "$VALIDATE_OUTPUT"
 
 # Detectar puerto USB
 detect_usb_ports() {

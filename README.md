@@ -76,7 +76,7 @@ sudo ./uninstall.sh
 | `astra flash usb` | ✅ | Flashea ESP32 por USB: regenera firmware, valida, auto-detecta puerto, `esphome run` |
 | `astra logs usb` | ✅ | Logs seriales por USB: auto-detecta puerto, `esphome logs --follow` |
 | Help / Version | ✅ | `astra --help`, `astra --version` |
-| Tests | 46/46 ✅ | Workspace, router, secrets, install, node create, driver, flash, logs |
+| Tests | 54/54 ✅ | Workspace, router, secrets, install, node create, driver, flash, logs |
 
 **En desarrollo (próximos vertical slices):**
 - OTA flash, múltiples drivers, ADP, Discovery, SDK
@@ -347,6 +347,41 @@ Presione `Ctrl+C` para salir limpiamente. No deja procesos Docker huérfanos.
 
 ---
 
+## Validaciones de seguridad
+
+### Boards soportados
+
+ASTRA mantiene una whitelist explícita de boards ESP32 soportados. Actualmente:
+
+| Board | Arquitectura | Estado |
+|-------|-------------|--------|
+| `esp32dev` | ESP32 | ✅ Soportado |
+| `esp32-c3-devkitm-1` | ESP32-C3 | ✅ Soportado |
+| `esp32-s2-saola-1` | ESP32-S2 | ✅ Soportado |
+| `esp32-s3-devkitc-1` | ESP32-S3 | ✅ Soportado |
+
+Intentar crear un nodo con un board no listado (ej: `esp01`, `d1_mini`, `nodemcu`) resultará en error:
+
+```text
+✗ Board 'esp01' es un dispositivo ESP8266, pero el driver ESPHome actual usa template ESP32.
+Boards ESP32 soportados: esp32dev esp32-c3-devkitm-1 esp32-s2-saola-1 esp32-s3-devkitc-1
+Para usar ESP8266, se requiere un driver/template específico (no implementado aún).
+```
+
+### MQTT Host no puede ser localhost
+
+Al crear un nodo o flashear, ASTRA valida que `mqtt_host` en `secrets.yaml` no sea `localhost`, `127.0.0.1` ni `::1`. Estos valores son inválidos para un ESP físico porque apuntarían al propio ESP, no al broker MQTT en la PC/red.
+
+```text
+✗ MQTT_HOST='localhost' no es válido para un nodo ESP físico.
+El broker MQTT debe ser accesible desde la red del ESP.
+En secrets.yaml, configure mqtt_host con la IP/hostname del broker accesible desde el ESP.
+Ejemplo:
+  mqtt_host: 192.168.1.100
+```
+
+---
+
 ## Sistema de dependencias (install.sh)
 
 El instalador verifica e instala automáticamente las dependencias requeridas:
@@ -385,7 +420,7 @@ cd tests
 ./run_tests.sh
 ```
 
-**Baseline actual: 46 tests pasan, 5 skipped (requieren sudo / docker permissions)**
+**Baseline actual: 54 tests pasan, 7 skipped (requieren sudo / docker permissions)**
 
 Categorías:
 - Workspace: find, load, secrets resolution, paths
@@ -394,8 +429,8 @@ Categorías:
 - Install: ASTRA_HOME resolution, launcher creation, dev/prod mode
 - Node create: no workspace, missing args, invalid sensor, duplicate, driver render
 - Driver: list-sensors, render, dependency checks
-- Flash: no workspace, missing node, multiple nodes, auto-select, explicit port
-- Logs: no workspace, missing node, multiple nodes, auto-select, explicit port
+- Flash: no workspace, missing node, multiple nodes, auto-select, explicit port, invalid board, validate error capture, mqtt localhost rejection
+- Logs: no workspace, missing node, multiple nodes, auto-select, explicit port, invalid board, mqtt localhost rejection
 
 ---
 

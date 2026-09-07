@@ -119,7 +119,17 @@ done
 # Validar board básico (lista blanca simple)
 VALID_BOARDS="esp32dev esp32-c3-devkitm-1 esp32-s2-saola-1 esp32-s3-devkitc-1"
 if ! echo "$VALID_BOARDS" | grep -qw "$BOARD"; then
-    warn "Board '$BOARD' no está en lista blanca conocida. Continuando..."
+    # Detectar boards ESP8266 comunes que son incompatibles con template ESP32
+    case "$BOARD" in
+        esp01|esp01_1m|esp01_2m|esp01_4m|esp8266|d1_mini|d1_mini_lite|d1_mini_pro|nodemcu|nodemcuv2|wemos_d1_mini|wemos_d1_mini_lite|wemos_d1_mini_pro)
+            die "Board '$BOARD' es un dispositivo ESP8266, pero el driver ESPHome actual usa template ESP32.
+Boards ESP32 soportados: $VALID_BOARDS
+Para usar ESP8266, se requiere un driver/template específico (no implementado aún)."
+            ;;
+        *)
+            die "Board '$BOARD' no válido. Boards ESP32 soportados por ASTRA: $VALID_BOARDS"
+            ;;
+    esac
 fi
 
 # Crear directorio del nodo

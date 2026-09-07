@@ -137,7 +137,11 @@ cmd_validate() {
     docker run --rm \
         -v "$NODE_DIR":/config \
         esphome/esphome \
-        config firmware.yaml >/dev/null
+        config firmware.yaml
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        return $exit_code
+    fi
 
     ok "Configuración ESPHome válida"
 }
