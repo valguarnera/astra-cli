@@ -163,3 +163,117 @@ EOF
     echo "$stderr_output" | grep -q "No se detectó IP LAN" || return 1
     echo "$stderr_output" | grep -q "Para hardware físico" || return 1
 }
+
+# Test check_lan_connectivity with 192.168.* IP
+test_check_lan_connectivity_with_lan() {
+    local test_dir="/tmp/astra_test_lan_conn_$$"
+    mkdir -p "$test_dir"
+    
+    cat > "$test_dir/hostname" <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "-I" ]; then
+    echo "192.168.1.100"
+fi
+EOF
+    chmod +x "$test_dir/hostname"
+    
+    # Mock ping to succeed
+    cat > "$test_dir/ping" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" = "-c" && "$2" = "1" && "$3" = "-W" && "$4" = "1" && "$5" = "192.168.1.1" ]]; then
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$test_dir/ping"
+    
+    local output
+    output=$(PATH="$test_dir:$PATH" ASTRA_HOME="$ASTRA_HOME" bash -c 'source '"$ASTRA_HOME"'/lib/core/checks.sh; check_lan_connectivity' 2>&1)
+    local exit_code=$?
+    
+    rm -rf "$test_dir"
+    
+    assert_equals "0" "$exit_code" "check_lan_connectivity should succeed with valid LAN"
+    echo "$output" | grep -q "IP LAN: 192.168.1.100" || return 1
+    echo "$output" | grep -q "Gateway 192.168.1.1 alcanzable" || return 1
+}
+
+# Test check_lan_connectivity without 192.168.* IP
+test_check_lan_connectivity_no_lan() {
+    local test_dir="/tmp/astra_test_lan_conn_$$"
+    mkdir -p "$test_dir"
+    
+    cat > "$test_dir/hostname" <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "-I" ]; then
+    echo "172.17.0.1 172.18.0.1"
+fi
+EOF
+    chmod +x "$test_dir/hostname"
+    
+    local output
+    output=$(PATH="$test_dir:$PATH" ASTRA_HOME="$ASTRA_HOME" bash -c 'source '"$ASTRA_HOME"'/lib/core/checks.sh; check_lan_connectivity' 2>&1)
+    local exit_code=$?
+    
+    rm -rf "$test_dir"
+    
+    assert_equals "1" "$exit_code" "check_lan_connectivity should fail when no 192.168.* IP"
+    echo "$output" | grep -q "No se detectó IP LAN" || return 1
+}
+
+# Test check_mqtt_broker_connectivity with valid host
+test_check_mqtt_broker_connectivity_success() {
+    local test_dir="/tmp/astra_test_mqtt_$$"
+    mkdir -p "$test_dir"
+    
+    # Mock nc to succeed
+    cat > "$test_dir/nc" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" = "-z" && "$2" = "-w" && "$3" = "2" && "$4" = "192.168.1.100" && "$5" = "1883" ]]; then
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$test_dir/nc"
+    
+    local output
+    output=$(PATH="$test_dir:$PATH" ASTRA_HOME="$ASTRA_HOME" bash -c 'source '"$ASTRA_HOME"'/lib/core/checks.sh; check_mqtt_broker_connectivity "192.168.1.100" 1883' 2>&1)
+    local exit_code=$?
+    
+    rm -rf "$test_dir"
+    
+    assert_equals "0" "$exit_code" "check_mqtt_broker_connectivity should succeed with reachable broker"
+    echo "$output" | grep -q "Broker MQTT en 192.168.1.100:1883 accesible" || return 1
+}
+
+# Test check_mqtt_broker_connectivity failure
+test_check_mqtt_broker_connectivity_failure() {
+    local test_dir="/tmp/astra_test_mqtt_$$"
+    mkdir -p "$test_dir"
+    
+    # Mock nc to fail
+    cat > "$test_dir/nc" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+    chmod +x "$test_dir/nc"
+    
+    local output
+    output=$(PATH="$test_dir:$PATH" ASTRA_HOME="$ASTRA_HOME" bash -c 'source '"$ASTRA_HOME"'/lib/core/checks.sh; check_mqtt_broker_connectivity "192.168.1.100" 1883' 2>&1)
+    local exit_code=$?
+    
+    rm -rf "$test_dir"
+    
+    assert_equals "1" "$exit_code" "check_mqtt_broker_connectivity should fail with unreachable broker"
+    echo "$output" | grep -q "no accesible" || return 1
+}
+
+# Test check_mqtt_broker_connectivity with localhost (should skip)
+test_check_mqtt_broker_connectivity_localhost() {
+    local output
+    output=$(ASTRA_HOME="$ASTRA_HOME" bash -c 'source '"$ASTRA_HOME"'/lib/core/checks.sh; check_mqtt_broker_connectivity "localhost" 1883' 2>&1)
+    local exit_code=$?
+    
+    assert_equals "1" "$exit_code" "check_mqtt_broker_connectivity should skip for localhost"
+    echo "$output" | grep -q "localhost" || return 1
+}

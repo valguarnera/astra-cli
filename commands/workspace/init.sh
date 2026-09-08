@@ -23,10 +23,16 @@ Project............. ${PROJECT_NAME}"
 WIFI_SSID=$(prompt "WiFi SSID..........." "")
 WIFI_PASSWORD=$(prompt_secret "WiFi Password....... ")
 
-# Detectar IP LAN por defecto para MQTT
+# Detectar IP LAN por defecto para MQTT y verificar conectividad
+check_lan_connectivity
 DEFAULT_MQTT_HOST=$(get_default_mqtt_host)
 MQTT_HOST=$(prompt "Broker.............." "$DEFAULT_MQTT_HOST")
 echo ""
+
+# Verificar conectividad al broker MQTT si no es localhost
+if [ "$MQTT_HOST" != "localhost" ] && [ "$MQTT_HOST" != "127.0.0.1" ]; then
+    check_mqtt_broker_connectivity "$MQTT_HOST" 1883
+fi
 
 create_workspace
 

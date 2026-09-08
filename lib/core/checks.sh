@@ -250,6 +250,67 @@ get_default_mqtt_host() {
     return 1
 }
 
+# check_lan_connectivity - Verifica conectividad básica de la IP LAN
+# No bloquea, solo informa. Returns 0 if OK, 1 if no LAN IP, 2 if LAN IP but no gateway
+check_lan_connectivity() {
+    local lan_ip
+    lan_ip=$(detect_lan_ip)
+    if [ -z "$lan_ip" ]; then
+        warn "No se detectó IP LAN 192.168.* para verificar conectividad." >&2
+        return 1
+    fi
+    
+    info "Detectando red LAN..."
+    ok "IP LAN: $lan_ip"
+    
+    # Try to ping the gateway (first 3 octets + .1)
+    local gateway_ip
+    gateway_ip=$(echo "$lan_ip" | sed 's/\.[0-9]*$/.1/')
+    
+    if ping -c 1 -W 1 "$gateway_ip" >/dev/null 2>&1; then
+        ok "Gateway $gateway_ip alcanzable"
+        return 0
+    else
+        warn "Gateway $gateway_ip no responde a ping (puede ser normal si ICMP bloqueado)" >&2
+        return 2
+    fi
+}
+
+# check_mqtt_broker_connectivity - Verifica si el broker MQTT está accesible
+# No bloquea, solo informa. Returns 0 if reachable, 1 if not
+check_mqtt_broker_connectivity() {
+    local mqtt_host="$1"
+    local mqtt_port="${2:-1883}"
+    
+    if [ "$mqtt_host" = "localhost" ] || [ "$mqtt_host" = "127.0.0.1" ]; then
+        warn "MQTT host es localhost, no se puede verificar conectividad de red" >&2
+        return 1
+    fi
+    
+    # Try TCP connection to MQTT port
+    if command -v nc >/dev/null 2>&1; then
+        if nc -z -w 2 "$mqtt_host" "$mqtt_port" >/dev/null 2>&1; then
+            ok "Broker MQTT en $mqtt_host:$mqtt_port accesible"
+            return 0
+        else
+            warn "Broker MQTT en $mqtt_host:$mqtt_port no accesible (¿está levantado?)" >&2
+            return 1
+        fi
+    elif command -v timeout >/dev/null 2>&1; then
+        # Fallback using timeout and bash TCP redirection
+        if timeout 2 bash -c "cat < /dev/null > /dev/tcp/$mqtt_host/$mqtt_port" >/dev/null 2>&1; then
+            ok "Broker MQTT en $mqtt_host:$mqtt_port accesible"
+            return 0
+        else
+            warn "Broker MQTT en $mqtt_host:$mqtt_port no accesible (¿está levantado?)" >&2
+            return 1
+        fi
+    else
+        warn "No se puede verificar broker MQTT (nc o timeout no disponibles)" >&2
+        return 1
+    fi
+}
+
 # Run all checks (for install.sh --check-only mode)
 run_all_checks() {
     local all_ok=1

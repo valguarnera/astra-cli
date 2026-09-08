@@ -28,7 +28,7 @@ Uso: $0 [OPCIONES]
 
 Opciones:
     --dev          Instala en modo desarrollo (symlink a /opt/astra)
-    --check-only   Solo verifica dependencias, no instala ASTRA
+    --check-only   Solo verifica dependencias, no instala astra-cli
     --help, -h     Muestra esta ayuda
 EOF
             exit 0
