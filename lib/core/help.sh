@@ -8,9 +8,9 @@ Uso:
 
     astra init
 
-    astra broker up
-    astra broker down
-    astra broker state
+    astra broker start
+    astra broker stop
+    astra broker status
 
     astra node create <id> --board <board> --sensors <list>
     astra node list
@@ -27,8 +27,6 @@ Uso:
 
     astra usb list
     astra usb test [device]
-    astra usb mount <device>
-    astra usb unmount
 
 Opciones
 

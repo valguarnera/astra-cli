@@ -138,7 +138,6 @@ identify_esp_board() {
             "0403:6001") printf "ftdi" ;;
             *) printf "unknown" ;;
         esac
-        return 0
     fi
 
     printf "unknown"

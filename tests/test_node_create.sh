@@ -195,6 +195,7 @@ EOF
     assert_equals "0" "$exit_code" "node create should succeed with esp01 board"
     echo "$output" | grep -qi "esp8266" || return 1
     rm -rf "$test_dir" 2>/dev/null
+    return 0
 }
 
 # Test: node create with unsupported board (should still fail)
