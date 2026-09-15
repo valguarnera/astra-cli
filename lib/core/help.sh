@@ -12,15 +12,13 @@ Uso:
     astra broker down
     astra broker state
 
-    astra node create
+    astra node create <id> --board <board> --sensors <list>
     astra node list
-    astra node delete
+    astra node delete <id>
 
-    astra flash usb <node>
-    astra flash ota <node>
+    astra flash usb <node> [--port <port>]
 
-    astra logs usb <node>
-    astra logs ota <node>
+    astra logs usb <node> [--port <port>] [--follow] [--lines <n>]
 
     astra hardware detect
     astra hardware check

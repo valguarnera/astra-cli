@@ -5,7 +5,10 @@ if [ -z "$ASTRA_HOME" ]; then
 fi
 
 source "$ASTRA_HOME/lib/core/ui.sh"
-source "$ASTRA_HOME/lib/core/project.sh"
+
+is_development() {
+    [ -L "$ASTRA_HOME" ]
+}
 
 write_file() {
     local file="$1"

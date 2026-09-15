@@ -4,7 +4,6 @@
 
 source "$ASTRA_HOME/lib/core/ui.sh"
 source "$ASTRA_HOME/lib/core/utils.sh"
-source "$ASTRA_HOME/lib/core/project.sh"
 
 test_astra_home_resolution_dev_mode() {
     # Simulate dev mode by creating a symlink

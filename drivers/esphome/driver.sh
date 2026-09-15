@@ -173,7 +173,7 @@ case "$COMMAND" in
         cmd_render
         ;;
     list-sensors)
-        cmd_list_sensors
+        cmd_list_sensors "$@"
         ;;
     validate)
         cmd_validate
