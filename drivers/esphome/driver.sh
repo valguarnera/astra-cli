@@ -6,6 +6,7 @@ set -e
 
 COMMAND="${1:-}"
 NODE_ID="${2:-}"
+ARCH_ARG="${3:-}"
 
 if [ -z "$ASTRA_HOME" ]; then
     ASTRA_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -13,7 +14,8 @@ fi
 
 DRIVER_DIR="$ASTRA_HOME/drivers/esphome"
 SENSORS_DIR="$DRIVER_DIR/sensors"
-TEMPLATE="$DRIVER_DIR/template.yaml"
+TEMPLATE_ESP32="$DRIVER_DIR/template.yaml"
+TEMPLATE_ESP8266="$DRIVER_DIR/template_esp8266.yaml"
 
 source "$ASTRA_HOME/lib/core/ui.sh"
 source "$ASTRA_HOME/lib/workspace.sh"
@@ -23,7 +25,7 @@ usage() {
 ESPHome Driver for ASTRA CLI
 
 Uso:
-    $0 render <node_id>     Genera firmware.yaml desde node.yaml
+    $0 render <node_id> [arch]     Genera firmware.yaml desde node.yaml
     $0 list-sensors         Lista sensores soportados
     $0 validate <node_id>   Valida configuración con esphome config
 EOF
@@ -46,12 +48,24 @@ load_node() {
     NODE_FRIENDLY_NAME=$(yq '.friendly_name' "$NODE_YAML")
     BOARD=$(yq '.board' "$NODE_YAML")
     SENSORS=$(yq '.sensors // [] | join(",")' "$NODE_YAML")
+    # Read architecture from node.yaml, fallback to esp32 for backward compatibility
+    ARCH=$(yq '.arch // "esp32"' "$NODE_YAML")
 
     if [ -z "$NODE_FRIENDLY_NAME" ] || [ "$NODE_FRIENDLY_NAME" = "null" ]; then
         die "node.yaml inválido: falta 'friendly_name'"
     fi
     if [ -z "$BOARD" ] || [ "$BOARD" = "null" ]; then
         die "node.yaml inválido: falta 'board'"
+    fi
+}
+
+# Get template based on architecture
+get_template() {
+    local arch="$1"
+    if [ "$arch" = "esp8266" ]; then
+        echo "$TEMPLATE_ESP8266"
+    else
+        echo "$TEMPLATE_ESP32"
     fi
 }
 
@@ -83,13 +97,21 @@ render_sensors_config() {
 
 cmd_render() {
     if [ -z "$NODE_ID" ]; then
-        die "Uso: $0 render <node_id>"
+        die "Uso: $0 render <node_id> [arch]"
+    fi
+
+    # Use provided arch or read from node.yaml
+    if [ -n "$ARCH_ARG" ]; then
+        ARCH="$ARCH_ARG"
     fi
 
     require_workspace
     load_node "$NODE_ID"
 
     SENSORS_CONFIG=$(render_sensors_config "$SENSORS")
+
+    # Select template based on architecture
+    TEMPLATE=$(get_template "$ARCH")
 
     OUTPUT="$NODE_DIR/firmware.yaml"
 
@@ -103,7 +125,7 @@ cmd_render() {
         awk -v sensors="$SENSORS_CONFIG" '{gsub(/\{\{SENSORS_CONFIG\}\}/, sensors)} 1' \
         > "$OUTPUT"
 
-    ok "Firmware generado: $OUTPUT"
+    ok "Firmware generado: $OUTPUT (arquitectura: $ARCH)"
 }
 
 cmd_list_sensors() {

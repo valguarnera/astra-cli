@@ -116,20 +116,25 @@ for SENSOR in "${SENSOR_ARRAY[@]}"; do
     fi
 done
 
-# Validar board básico (lista blanca simple)
-VALID_BOARDS="esp32dev esp32-c3-devkitm-1 esp32-s2-saola-1 esp32-s3-devkitc-1"
-if ! echo "$VALID_BOARDS" | grep -qw "$BOARD"; then
-    # Detectar boards ESP8266 comunes que son incompatibles con template ESP32
-    case "$BOARD" in
-        esp01|esp01_1m|esp01_2m|esp01_4m|esp8266|d1_mini|d1_mini_lite|d1_mini_pro|nodemcu|nodemcuv2|wemos_d1_mini|wemos_d1_mini_lite|wemos_d1_mini_pro)
-            die "Board '$BOARD' es un dispositivo ESP8266, pero el driver ESPHome actual usa template ESP32.
-Boards ESP32 soportados: $VALID_BOARDS
-Para usar ESP8266, se requiere un driver/template específico (no implementado aún)."
-            ;;
-        *)
-            die "Board '$BOARD' no válido. Boards ESP32 soportados por ASTRA: $VALID_BOARDS"
-            ;;
-    esac
+# Validar board y determinar arquitectura (ESP32 vs ESP8266)
+# Boards ESP32 soportados
+ESP32_BOARDS="esp32dev esp32-c3-devkitm-1 esp32-s2-saola-1 esp32-s3-devkitc-1"
+# Boards ESP8266 soportados
+ESP8266_BOARDS="esp01 esp01_1m esp01_2m esp01_4m esp8266 d1_mini d1_mini_lite d1_mini_pro nodemcu nodemcuv2 wemos_d1_mini wemos_d1_mini_lite wemos_d1_mini_pro"
+
+ALL_VALID_BOARDS="$ESP32_BOARDS $ESP8266_BOARDS"
+
+if ! echo "$ALL_VALID_BOARDS" | grep -qw "$BOARD"; then
+    die "Board '$BOARD' no válido. Boards soportados por ASTRA: $ALL_VALID_BOARDS"
+fi
+
+# Determinar arquitectura del board
+if echo "$ESP32_BOARDS" | grep -qw "$BOARD"; then
+    ARCH="esp32"
+elif echo "$ESP8266_BOARDS" | grep -qw "$BOARD"; then
+    ARCH="esp8266"
+else
+    die "Board '$BOARD' no reconocido"
 fi
 
 # Crear directorio del nodo
@@ -148,6 +153,7 @@ id: $NODE_ID
 friendly_name: "$FRIENDLY_NAME"
 driver: $DRIVER
 board: $BOARD
+arch: $ARCH
 sensors:
 EOF
 
@@ -160,8 +166,8 @@ done
 ok "node.yaml creado: $NODE_DIR/node.yaml"
 
 # Invocar driver para generar firmware.yaml
-info "Generando firmware con driver ESPHome..."
-"$DRIVER_DIR/driver.sh" render "$NODE_ID"
+info "Generando firmware con driver ESPHome (arquitectura: $ARCH)..."
+"$DRIVER_DIR/driver.sh" render "$NODE_ID" "$ARCH"
 
 # Validar configuración con esphome config (dry-run)
 info "Validando configuración ESPHome..."

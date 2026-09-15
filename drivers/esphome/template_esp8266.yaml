@@ -1,0 +1,47 @@
+esphome:
+  name: {{NODE_ID}}
+  friendly_name: {{NODE_FRIENDLY_NAME}}
+
+esp8266:
+  board: {{BOARD}}
+
+wifi:
+  ssid: "{{WIFI_SSID}}"
+  password: "{{WIFI_PASSWORD}}"
+  power_save_mode: none
+  reboot_timeout: 0s
+
+mqtt:
+  broker: "{{MQTT_HOST}}"
+  port: 1883
+  username: ""
+  password: ""
+  discovery: true
+  discovery_prefix: "homeassistant"
+  topic_prefix: "astra/{{NODE_ID}}"
+
+logger:
+  level: DEBUG
+  baud_rate: 115200
+
+i2c:
+  sda: 4
+  scl: 5
+  scan: true
+  id: bus_a
+
+one_wire:
+  - platform: gpio
+    pin: 2
+
+api:
+  port: 6053
+
+ota:
+  - platform: esphome
+
+web_server:
+  port: 80
+
+sensor:
+{{SENSORS_CONFIG}}

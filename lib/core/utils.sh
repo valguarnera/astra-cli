@@ -11,6 +11,7 @@ write_file() {
     local file="$1"
 
     cat > "$file"
+    sync
 
     ok "${file##*/}"
 }
