@@ -112,4 +112,4 @@ docker run --rm -it \
     --device="$PORT" \
     -v "$NODE_DIR":/config \
     esphome/esphome \
-    $LOGS_CMD
+    $LOGS_CMD --device "$PORT"

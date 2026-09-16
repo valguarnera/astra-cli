@@ -90,6 +90,6 @@ docker run --rm --privileged \
     --device="$PORT" \
     -v "$NODE_DIR":/config \
     esphome/esphome \
-    run firmware.yaml
+    run firmware.yaml --device "$PORT"
 
 ok "Firmware flasheado correctamente en $NODE_ID"
