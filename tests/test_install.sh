@@ -4,7 +4,6 @@
 
 source "$ASTRA_HOME/lib/core/ui.sh"
 source "$ASTRA_HOME/lib/core/utils.sh"
-source "$ASTRA_HOME/lib/core/project.sh"
 
 test_astra_home_resolution_dev_mode() {
     # Simulate dev mode by creating a symlink
@@ -90,13 +89,13 @@ test_launcher_creation() {
     local test_dir="/tmp/astra_test_install_$$"
     mkdir -p "$test_dir/usr/local/bin"
     
-    # Test create_launcher (without sudo)
-    create_launcher() {
+    # Test create_launcher (without sudo) - use a local mock function
+    mock_create_launcher() {
         ln -sf "$1" "$2"
         ok "Launcher"
     }
     
-    create_launcher "/fake/astra" "$test_dir/usr/local/bin/astra"
+    mock_create_launcher "/fake/astra" "$test_dir/usr/local/bin/astra"
     
     [ -L "$test_dir/usr/local/bin/astra" ] || return 1
     [ "$(readlink "$test_dir/usr/local/bin/astra")" = "/fake/astra" ] || return 1

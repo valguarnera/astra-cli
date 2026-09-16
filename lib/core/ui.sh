@@ -1,28 +1,23 @@
 #!/usr/bin/env bash
 
 ok() {
-    printf "✓ %s\n" "$1"
-    sleep 0.18
+    printf "✓ %s\n" "$1" >&2
 }
 
 fail() {
-    printf "✗ %s\n" "$1"
-    sleep 0.18
+    printf "✗ %s\n" "$1" >&2
 }
 
 error() {
-    printf "✗ %s\n" "$1"
-    sleep 0.18
+    printf "✗ %s\n" "$1" >&2
 }
 
 info() {
-    printf "• %s\n" "$1"
-    sleep 0.18
+    printf "• %s\n" "$1" >&2
 }
 
 warn() {
-    printf "⚠ %s\n" "$1"
-    sleep 0.18
+    printf "⚠ %s\n" "$1" >&2
 }
 
 success() {

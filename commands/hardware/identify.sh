@@ -9,7 +9,7 @@ if [ -z "$ASTRA_HOME" ]; then
 fi
 
 source "$ASTRA_HOME/lib/core/ui.sh"
-source "$ASTRA_HOME/lib/core/checks.sh"
+source "$ASTRA_HOME/lib/core/hardware.sh"
 
 if [ -z "$1" ]; then
     die "Uso: astra hardware identify <port>"
@@ -17,7 +17,7 @@ fi
 
 PORT="$1"
 
-info "Identificando dispositivo ESP en $PORT..."
+info "Identificando dispositivo en $PORT..."
 
 # Get USB serial adapter info
 USB_SERIAL="unknown"
@@ -35,26 +35,50 @@ if [ -e "$PORT" ]; then
     fi
 fi
 
-# Identify MCU and board
-info "Identificando MCU y board..."
-BOARD=$(identify_esp_board "$PORT")
+# Try to identify MCU and board via esptool.py (requires bootloader mode)
+info "Identificando MCU y board (requiere bootloader)..."
 MCU="unknown"
-if [ "$BOARD" = "esp01" ] || [ "$BOARD" = "esp12" ] || [ "$BOARD" = "esp8266" ] || [ "$BOARD" = "d1_mini" ] || [ "$BOARD" = "nodemcu" ]; then
-    MCU="ESP8266"
-elif [ "$BOARD" = "esp32" ] || [ "$BOARD" = "esp32dev" ] || [ "$BOARD" = "esp32-c3-devkitm-1" ] || [ "$BOARD" = "esp32-s2-saola-1" ] || [ "$BOARD" = "esp32-s3-devkitc-1" ]; then
-    MCU="ESP32"
+BOARD="unknown"
+
+if command -v esptool.py >/dev/null 2>&1; then
+    chip_info=$(esptool.py --port "$PORT" chip_id 2>&1)
+    if echo "$chip_info" | grep -q "ESP32"; then
+        MCU="ESP32"
+        flash_info=$(esptool.py --port "$PORT" flash_id 2>&1)
+        if echo "$flash_info" | grep -q "ESP32-C3"; then
+            BOARD="esp32-c3-devkitm-1"
+        elif echo "$flash_info" | grep -q "ESP32-S2"; then
+            BOARD="esp32-s2-saola-1"
+        elif echo "$flash_info" | grep -q "ESP32-S3"; then
+            BOARD="esp32-s3-devkitc-1"
+        else
+            BOARD="esp32dev"
+        fi
+    elif echo "$chip_info" | grep -q "ESP8266"; then
+        MCU="ESP8266"
+        flash_info=$(esptool.py --port "$PORT" flash_id 2>&1)
+        if echo "$flash_info" | grep -q "ESP8285\|ESP01"; then
+            BOARD="esp01"
+        elif echo "$flash_info" | grep -q "4MB"; then
+            BOARD="esp12"
+        else
+            BOARD="esp8266"
+        fi
+    fi
 fi
 
-if [ $? -eq 0 ] && [ "$BOARD" != "unknown" ]; then
-    info "Puerto USB: $PORT"
-    info "USB-Serial: $USB_SERIAL"
+# Display results
+info "Puerto USB: $PORT"
+info "USB-Serial: $USB_SERIAL"
+
+if [ "$MCU" != "unknown" ]; then
     info "MCU: $MCU"
     info "Board: $BOARD"
     ok "Dispositivo identificado: $BOARD ($MCU)"
 else
-    warn "No se pudo identificar el dispositivo completamente"
-    info "USB-Serial: $USB_SERIAL"
-    info "MCU: $MCU"
-    info "Board: $BOARD"
+    warn "No se pudo identificar MCU/board (requiere bootloader: GPIO0=LOW + RESET)"
+    info "MCU: unknown"
+    info "Board: unknown"
+    info "USB-Serial detectado: $USB_SERIAL (solo adaptador, no board ESP)"
     exit 1
 fi

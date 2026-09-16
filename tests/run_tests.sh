@@ -56,7 +56,7 @@ run_test() {
     local test_name="$1"
     local test_func="$2"
     echo "TEST: $test_name"
-    if $test_func; then
+    if ( $test_func ); then
         echo "  PASS"
         PASS_COUNT=$((PASS_COUNT + 1))
     else

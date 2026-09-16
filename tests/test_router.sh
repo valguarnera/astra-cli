@@ -12,7 +12,7 @@ test_router_help_command() {
     assert_not_empty "$output" "show_help should produce output"
     # Check that help contains expected commands
     echo "$output" | grep -q "astra init" || return 1
-    echo "$output" | grep -q "astra broker up" || return 1
+    echo "$output" | grep -q "astra broker start" || return 1
     echo "$output" | grep -q "astra node create" || return 1
     echo "$output" | grep -q "astra node list" || return 1
     echo "$output" | grep -q "astra node delete" || return 1
@@ -52,9 +52,9 @@ test_router_dispatch_node_delete() {
 }
 
 test_router_dispatch_broker_commands() {
-    [ -f "$ASTRA_HOME/commands/broker/up.sh" ] || return 1
-    [ -f "$ASTRA_HOME/commands/broker/down.sh" ] || return 1
-    [ -f "$ASTRA_HOME/commands/broker/state.sh" ] || return 1
+    [ -f "$ASTRA_HOME/commands/broker/start.sh" ] || return 1
+    [ -f "$ASTRA_HOME/commands/broker/stop.sh" ] || return 1
+    [ -f "$ASTRA_HOME/commands/broker/status.sh" ] || return 1
 }
 
 test_help_matches_filesystem() {
@@ -75,12 +75,12 @@ test_help_matches_filesystem() {
     [ -f "$ASTRA_HOME/commands/node/delete.sh" ] || return 1
     
     # Check broker commands
-    echo "$help_output" | grep -q "astra broker up" || return 1
-    [ -f "$ASTRA_HOME/commands/broker/up.sh" ] || return 1
+    echo "$help_output" | grep -q "astra broker start" || return 1
+    [ -f "$ASTRA_HOME/commands/broker/start.sh" ] || return 1
     
-    echo "$help_output" | grep -q "astra broker down" || return 1
-    [ -f "$ASTRA_HOME/commands/broker/down.sh" ] || return 1
+    echo "$help_output" | grep -q "astra broker stop" || return 1
+    [ -f "$ASTRA_HOME/commands/broker/stop.sh" ] || return 1
     
-    echo "$help_output" | grep -q "astra broker state" || return 1
-    [ -f "$ASTRA_HOME/commands/broker/state.sh" ] || return 1
+    echo "$help_output" | grep -q "astra broker status" || return 1
+    [ -f "$ASTRA_HOME/commands/broker/status.sh" ] || return 1
 }

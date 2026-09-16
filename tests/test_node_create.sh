@@ -15,11 +15,11 @@ test_node_create_no_workspace() {
     output=$(ASTRA_HOME="$ASTRA_HOME" "$ASTRA_HOME/commands/node/create.sh" sensor01 --board esp32dev --sensors bmp580 2>&1)
     local exit_code=$?
     
-    cd - >/dev/null
-    rm -rf "$test_dir"
+        rm -rf "$test_dir"
     
     assert_equals "1" "$exit_code" "node create should fail without workspace"
     echo "$output" | grep -q "No se encontró un Workspace ASTRA" || return 1
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: node create with missing arguments
@@ -37,12 +37,10 @@ test_node_create_missing_args() {
     output=$(ASTRA_HOME="$ASTRA_HOME" "$ASTRA_HOME/commands/node/create.sh" 2>&1)
     local exit_code=$?
     
-    cd - >/dev/null
-    (rm -rf "$test_dir" 2>/dev/null) &
-    sleep 0.2
-    
+        
     assert_equals "1" "$exit_code" "node create should fail with missing args"
     echo "$output" | grep -q "Falta <id> del nodo" || return 1
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: node create with invalid sensor
@@ -60,12 +58,10 @@ test_node_create_invalid_sensor() {
     output=$(ASTRA_HOME="$ASTRA_HOME" "$ASTRA_HOME/commands/node/create.sh" sensor01 --board esp32dev --sensors invalidsensor 2>&1)
     local exit_code=$?
     
-    cd - >/dev/null
-    (rm -rf "$test_dir" 2>/dev/null) &
-    sleep 0.2
-    
+        
     assert_equals "1" "$exit_code" "node create should fail with invalid sensor"
     echo "$output" | grep -q "no soportado" || return 1
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: node create duplicate node
@@ -85,12 +81,10 @@ test_node_create_duplicate() {
     output=$(ASTRA_HOME="$ASTRA_HOME" "$ASTRA_HOME/commands/node/create.sh" sensor01 --board esp32dev --sensors bmp580 2>&1)
     local exit_code=$?
     
-    cd - >/dev/null
-    (rm -rf "$test_dir" 2>/dev/null) &
-    sleep 0.2
-    
+        
     assert_equals "1" "$exit_code" "node create should fail with duplicate node"
     echo "$output" | grep -q "ya existe" || return 1
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: ESPHome driver list-sensors
@@ -124,11 +118,9 @@ EOF
     
     [ -f "$test_dir/nodes/sensor01/firmware.yaml" ] || return 1
     
-    cd - >/dev/null
-    (rm -rf "$test_dir" 2>/dev/null) &
-    sleep 0.2
-    
+        
     assert_equals "0" "$exit_code" "driver render should succeed"
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: dependency checks - Docker present
@@ -136,6 +128,7 @@ test_check_docker_present() {
     check_docker
     local result=$?
     assert_equals "0" "$result" "check_docker should pass when Docker is installed"
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: dependency checks - yq present
@@ -143,6 +136,7 @@ test_check_yq_present() {
     check_yq
     local result=$?
     assert_equals "0" "$result" "check_yq should pass when yq is installed"
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: node create with invalid sensor
@@ -157,17 +151,15 @@ test_node_create_invalid_sensor() {
     output=$(ASTRA_HOME="$ASTRA_HOME" "$ASTRA_HOME/commands/node/create.sh" sensor01 --board esp32dev --sensors invalidsensor 2>&1)
     local exit_code=$?
     
-    cd - >/dev/null
-    (rm -rf "$test_dir" 2>/dev/null) &
-    sleep 0.2
-    
+        
     assert_equals "1" "$exit_code" "node create should fail with invalid sensor"
     echo "$output" | grep -q "no soportado" || return 1
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: node create with invalid board (not in whitelist)
 test_node_create_invalid_board() {
-    local test_dir="/tmp/astra_test_node_invboard_$$"
+    local test_dir="/tmp/astra_test_node_invboard_${FUNCNAME}_$$"
     mkdir -p "$test_dir"
     echo "name: test" > "$test_dir/astra.yaml"
     echo "mqtt: {host: 192.168.1.100}" >> "$test_dir/astra.yaml"
@@ -177,41 +169,38 @@ test_node_create_invalid_board() {
     output=$(ASTRA_HOME="$ASTRA_HOME" "$ASTRA_HOME/commands/node/create.sh" sensor01 --board invalidboard --sensors bmp580 2>&1)
     local exit_code=$?
     
-    cd - >/dev/null
-    (rm -rf "$test_dir" 2>/dev/null) &
-    sleep 0.2
-    
+        
     assert_equals "1" "$exit_code" "node create should fail with invalid board"
     echo "$output" | grep -q "no válido" || return 1
     echo "$output" | grep -q "esp32dev" || return 1
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: node create with ESP8266 board (should now succeed)
 test_node_create_esp01_supported() {
-    local test_dir="/tmp/astra_test_node_esp01_$$"
+    local test_dir="/tmp/astra_test_node_esp01_${FUNCNAME}_$$"
     mkdir -p "$test_dir"
     cd "$test_dir"
-    PATH="$HOME/bin:$PATH" /workspace/bin/astra init test-esp01 <<'EOF' >/dev/null 2>&1
+    /workspace/bin/astra init test-esp01 <<'EOF'
 test-wifi
 test-password
 192.168.1.100
 EOF
     
     # Run node create from the workspace directory (test-esp01)
-    cd test-esp01
+    cd test-esp01 || { echo "FAILED to cd test-esp01"; return 1; }
     output=$(ASTRA_HOME="$ASTRA_HOME" "$ASTRA_HOME/commands/node/create.sh" sensor01 --board esp01 --sensors bmp580,ds18b20 2>&1)
     local exit_code=$?
     
-    cd - >/dev/null
-    rm -rf "$test_dir" 2>/dev/null
-    
     assert_equals "0" "$exit_code" "node create should succeed with esp01 board"
     echo "$output" | grep -qi "esp8266" || return 1
+    rm -rf "$test_dir" 2>/dev/null
+    return 0
 }
 
 # Test: node create with unsupported board (should still fail)
 test_node_create_invalid_board() {
-    local test_dir="/tmp/astra_test_node_invboard_$$"
+    local test_dir="/tmp/astra_test_node_invboard_${FUNCNAME}_$$"
     mkdir -p "$test_dir"
     echo "name: test" > "$test_dir/astra.yaml"
     echo "mqtt: {host: 192.168.1.100}" >> "$test_dir/astra.yaml"
@@ -224,13 +213,11 @@ test_node_create_invalid_board() {
     output=$(ASTRA_HOME="$ASTRA_HOME" "$ASTRA_HOME/commands/node/create.sh" sensor01 --board invalidboard --sensors bmp580 2>&1)
     local exit_code=$?
     
-    cd - >/dev/null
-    (rm -rf "$test_dir" 2>/dev/null) &
-    sleep 0.2
-    
+        
     assert_equals "1" "$exit_code" "node create should fail with invalid board"
     echo "$output" | grep -q "no válido" || return 1
     echo "$output" | grep -q "esp32dev" || return 1
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: node create with mqtt_host = localhost (should fail)
@@ -248,13 +235,11 @@ test_node_create_mqtt_localhost() {
     output=$(ASTRA_HOME="$ASTRA_HOME" "$ASTRA_HOME/commands/node/create.sh" sensor01 --board esp32dev --sensors bmp580 2>&1)
     local exit_code=$?
     
-    cd - >/dev/null
-    (rm -rf "$test_dir" 2>/dev/null) &
-    sleep 0.2
-    
+        
     assert_equals "1" "$exit_code" "node create should fail with localhost MQTT"
     echo "$output" | grep -q "no es válido" || return 1
     echo "$output" | grep -q "192.168.1.100" || return 1
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: dependency checks - ESPHome image present
@@ -262,6 +247,7 @@ test_check_esphome_present() {
     check_esphome
     local result=$?
     assert_equals "0" "$result" "check_esphome should pass when image exists"
+    rm -rf "$test_dir" 2>/dev/null
 }
 
 # Test: ensure_dependency with existing dependency
@@ -270,4 +256,5 @@ test_ensure_dependency_existing() {
     ensure_dependency check_docker install_docker "Docker" 2>/dev/null
     local result=$?
     assert_equals "0" "$result" "ensure_dependency should pass for existing dependency"
+    rm -rf "$test_dir" 2>/dev/null
 }
